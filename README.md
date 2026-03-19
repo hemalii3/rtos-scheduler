@@ -3,7 +3,7 @@
 A project that simulates how a real-time operating system (RTOS) decides which tasks to run and when. Built with C++ for the core logic and Java for the web interface.
 <img src="dash1.png" width="100%" alt="Dashboard"/>
 <img src="dash2.png" width="100%" alt="Dashboard"/>
-<img src="dash3.png" width="100%" alt="Dashboard"/>
+<img src="dash3.png" width="100%" alt="Dashboard"/> 
 <img src="dash4.png" width="100%" alt="Dashboard"/>
 ---
 
