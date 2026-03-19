@@ -1,8 +1,10 @@
-cat > ~/rtos-scheduler/README.md << 'EOF'
 # RTOS Scheduler Simulator
 
 A project that simulates how a real-time operating system (RTOS) decides which tasks to run and when. Built with C++ for the core logic and Java for the web interface.
-
+<img src="dash1.png" width="100%" alt="Dashboard"/>
+<img src="dash2.png" width="100%" alt="Dashboard"/>
+<img src="dash3.png" width="100%" alt="Dashboard"/>
+<img src="dash4.png" width="100%" alt="Dashboard"/>
 ---
 
 ## What it does
@@ -106,10 +108,3 @@ Returns a JSON object with the algorithm used, CPU utilization, feasibility flag
 | DevOps    | Docker, docker-compose        |
 
 ---
-
-## What to say in an interview
-
-> "I built a real-time task scheduler in C++ that implements RMS and EDF algorithms. The engine runs as a TCP server and a Java Spring Boot API sits in front of it, exposing a REST endpoint and pushing live results over WebSocket to a browser dashboard with a Gantt chart."
-EOF
-
-echo "✅ README written"
