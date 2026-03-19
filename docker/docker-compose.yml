@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+
+  cpp-engine:
+    build:
+      context: ../cpp
+      dockerfile: ../docker/Dockerfile.cpp
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  java-api:
+    build:
+      context: ../java
+      dockerfile: ../docker/Dockerfile.java
+    ports:
+      - "8080:8080"
+    depends_on:
+      - cpp-engine
+    environment:
+      - CPP_HOST=cpp-engine
+      - CPP_PORT=9090
+    restart: unless-stopped
+

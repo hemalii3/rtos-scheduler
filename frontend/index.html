@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>RTOS Scheduler</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --white:   #ffffff;
+      --off:     #f7f6f4;
+      --light:   #efefed;
+      --mid:     #c8c6c1;
+      --dark:    #1a1a18;
+      --black:   #0d0d0c;
+      --accent:  #0032ff;
+      --red:     #e8002d;
+      --success: #007a4c;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--white); color: var(--black); min-height: 100vh; }
+
+    .topbar { background: var(--accent); color: #fff; text-align: center; font-size: 12px; font-weight: 500; letter-spacing: 0.04em; padding: 9px 16px; }
+
+    nav { border-bottom: 1px solid var(--light); background: var(--white); position: sticky; top: 0; z-index: 100; }
+    .nav-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; padding: 0 24px; height: 56px; gap: 32px; }
+    .nav-logo { font-family: 'Playfair Display', serif; font-weight: 900; font-size: 18px; letter-spacing: -0.02em; color: var(--black); border: 2px solid var(--black); padding: 4px 10px; white-space: nowrap; }
+    .nav-tabs { display: flex; gap: 0; list-style: none; }
+    .nav-tabs li a { display: block; padding: 0 16px; line-height: 56px; font-size: 13px; font-weight: 500; color: var(--dark); text-decoration: none; border-bottom: 2px solid transparent; transition: border-color .15s, color .15s; cursor: pointer; }
+    .nav-tabs li a:hover { border-bottom-color: var(--black); color: var(--black); }
+    .nav-tabs li a.active { border-bottom-color: var(--black); color: var(--black); font-weight: 700; }
+    .nav-right { margin-left: auto; display: flex; align-items: center; gap: 20px; }
+    .nav-right span { font-size: 12px; color: var(--mid); }
+
+    .subnav { border-bottom: 1px solid var(--light); background: var(--white); }
+    .subnav-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; gap: 24px; padding: 0 24px; height: 44px; overflow-x: auto; }
+    .subnav-inner a { font-size: 12px; font-weight: 500; color: var(--dark); text-decoration: none; white-space: nowrap; padding: 0 2px; border-bottom: 1px solid transparent; transition: border-color .15s; cursor: pointer; }
+    .subnav-inner a:hover { border-bottom-color: var(--dark); }
+    .subnav-inner a.hot { color: var(--red); font-weight: 700; }
+    .subnav-inner a.active { border-bottom-color: var(--dark); }
+
+    .delivery-bar { background: var(--black); color: var(--white); display: flex; justify-content: center; gap: 48px; padding: 10px 24px; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; }
+    .delivery-bar span { opacity: 0.7; }
+    .delivery-bar span::before { content: '✓  '; opacity: 1; }
+
+    .page { max-width: 1280px; margin: 0 auto; padding: 0 24px 60px; }
+
+    .hero { border-bottom: 1px solid var(--light); padding: 20px 0 16px; display: flex; align-items: baseline; gap: 16px; margin-bottom: 28px; }
+    .hero h1 { font-family: 'Playfair Display', serif; font-size: 2.6rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em; }
+    .hero-sub { font-size: 12px; color: var(--mid); font-style: italic; font-weight: 300; }
+    .hero-badge { margin-left: auto; background: var(--black); color: var(--white); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 5px 12px; }
+
+    .grid-main { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; }
+
+    .sidebar { position: sticky; top: 101px; }
+    .sidebar-section { border: 1px solid var(--light); margin-bottom: 1px; }
+    .sidebar-head { padding: 12px 16px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dark); background: var(--off); border-bottom: 1px solid var(--light); display: flex; justify-content: space-between; align-items: center; }
+    .sidebar-body { padding: 16px; }
+
+    label { font-size: 11px; font-weight: 500; color: var(--dark); display: block; margin-bottom: 5px; letter-spacing: 0.04em; }
+    input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--light); background: var(--white); font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--black); border-radius: 0; transition: border-color .15s; margin-bottom: 12px; appearance: none; }
+    input:focus, select:focus { outline: none; border-color: var(--black); }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231a1a18'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+
+    .btn-full { width: 100%; padding: 12px; background: var(--black); color: var(--white); border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; transition: background .15s; }
+    .btn-full:hover { background: #2a2a28; }
+    .btn-ghost { width: 100%; padding: 9px; background: transparent; color: var(--accent); border: 1px solid var(--accent); cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 8px; transition: all .15s; }
+    .btn-ghost:hover { background: var(--accent); color: var(--white); }
+    .btn-del { background: none; border: none; color: var(--mid); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; transition: color .15s; }
+    .btn-del:hover { color: var(--red); }
+
+    .task-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .task-chip { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--light); background: var(--off); font-size: 12px; }
+    .task-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .task-chip-name { font-weight: 700; min-width: 28px; }
+    .task-chip-detail { color: var(--mid); font-size: 11px; flex: 1; }
+    .task-chip-util { font-size: 11px; font-weight: 500; margin-left: auto; }
+    .add-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+    .add-row input { margin-bottom: 0; font-size: 12px; padding: 7px 8px; }
+    #status { font-size: 11px; color: var(--mid); padding: 6px 0; min-height: 20px; font-style: italic; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--light); margin-bottom: 20px; }
+    .stat-cell { padding: 18px 16px; border-right: 1px solid var(--light); text-align: center; }
+    .stat-cell:last-child { border-right: none; }
+    .stat-val { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; line-height: 1; display: block; margin-bottom: 4px; }
+    .stat-lbl { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mid); }
+
+    /* panels */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Gantt */
+    .gantt-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .gantt-toolbar span { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mid); }
+    .gantt-algo-badge { background: var(--black); color: var(--white); font-size: 9px; letter-spacing: 0.12em; padding: 3px 10px; }
+    .filter-btn { padding: 4px 12px; border: 1px solid var(--light); background: var(--white); font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--dark); transition: all .15s; }
+    .filter-btn.on { background: var(--red); color: var(--white); border-color: var(--red); }
+    .gantt-wrap { border: 1px solid var(--light); padding: 20px; overflow-x: auto; }
+    .g-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+    .g-label { width: 40px; font-size: 11px; font-weight: 600; color: var(--dark); text-align: right; flex-shrink: 0; }
+    .g-cells { display: flex; flex: 1; gap: 1px; }
+    .g-cell { flex: 1; height: 22px; min-width: 4px; transition: opacity .1s; }
+    .g-cell:hover { opacity: 0.65; cursor: default; }
+    .g-idle { background: var(--off); }
+    .g-missed { background: var(--red) !important; }
+    .ruler-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+    .ruler-lbl { width: 40px; flex-shrink: 0; }
+    .ruler-cells { display: flex; flex: 1; }
+    .ruler-cell { flex: 1; min-width: 4px; font-size: 9px; color: var(--mid); text-align: center; }
+    .empty-gantt { text-align: center; padding: 60px 0; color: var(--mid); font-size: 13px; font-style: italic; }
+
+    /* utilization panel */
+    .util-panel { border: 1px solid var(--light); padding: 24px; }
+    .util-panel h3 { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+    .util-panel p { font-size: 12px; color: var(--mid); margin-bottom: 24px; font-style: italic; }
+    .util-bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .util-bar-label { width: 32px; font-size: 11px; font-weight: 700; text-align: right; flex-shrink: 0; }
+    .util-bar-track { flex: 1; background: var(--light); height: 20px; position: relative; }
+    .util-bar-fill { height: 100%; transition: width .5s ease; }
+    .util-bar-val { width: 48px; font-size: 11px; color: var(--mid); flex-shrink: 0; }
+    .util-bound-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--dark); z-index: 2; }
+    .util-bound-label { position: absolute; top: -18px; font-size: 9px; font-weight: 700; color: var(--dark); white-space: nowrap; transform: translateX(-50%); }
+    .util-legend { display: flex; gap: 20px; margin-top: 20px; font-size: 11px; }
+    .util-legend-item { display: flex; align-items: center; gap: 6px; }
+    .util-legend-dot { width: 12px; height: 12px; }
+
+    .info-bar { background: var(--off); border: 1px solid var(--light); border-top: none; padding: 10px 16px; display: flex; gap: 24px; font-size: 11px; color: var(--mid); flex-wrap: wrap; }
+    .info-bar strong { color: var(--dark); }
+
+    .footer-strip { background: var(--black); color: var(--white); text-align: center; padding: 12px; font-size: 11px; letter-spacing: 0.06em; margin-top: 40px; }
+
+    /* modal toast */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--black); color: var(--white); padding: 12px 20px; font-size: 12px; font-weight: 500; z-index: 9999; opacity: 0; transform: translateY(8px); transition: all .2s; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<div class="topbar">RTOS SCHEDULER VISUALIZER &nbsp;·&nbsp; C++ ENGINE ON PORT 9090 &nbsp;·&nbsp; JAVA API ON PORT 8080</div>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">SCHED°</div>
+    <ul class="nav-tabs">
+      <li><a onclick="setView('simulator')" id="nav-simulator" class="active">Simulator</a></li>
+      <li><a onclick="switchAlgo('RMS')" id="nav-rms">RMS</a></li>
+      <li><a onclick="switchAlgo('EDF')" id="nav-edf">EDF</a></li>
+      <li><a onclick="setView('utilization')" id="nav-utilization">Analysis</a></li>
+    </ul>
+    <div class="nav-right">
+      <span>C++17</span>
+      <span>Java 21</span>
+      <span>Spring Boot 3</span>
+    </div>
+  </div>
+</nav>
+
+<div class="subnav">
+  <div class="subnav-inner">
+    <a onclick="switchAlgo('RMS')" id="sub-rms">Rate Monotonic</a>
+    <a onclick="switchAlgo('EDF')" id="sub-edf">Earliest Deadline First</a>
+    <a onclick="setView('utilization')" id="sub-util">Utilization Bound</a>
+    <a onclick="setView('simulator')" id="sub-sim">Preemption Log</a>
+    <a onclick="toggleMissFilter()" id="sub-miss" class="hot">Deadline Misses</a>
+    <a onclick="setView('simulator')">Task Sets</a>
+    <a onclick="exportJSON()">Export JSON</a>
+  </div>
+</div>
+
+<div class="delivery-bar">
+  <span>Tick-accurate simulation</span>
+  <span>Liu &amp; Layland feasibility</span>
+  <span>Real-time WebSocket push</span>
+</div>
+
+<div class="page">
+  <div class="hero">
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--mid);margin-bottom:4px">Real-Time Operating System</div>
+      <h1 id="hero-title">Task Scheduler</h1>
+    </div>
+    <div style="font-size:12px;color:var(--mid);font-style:italic;font-weight:300" id="hero-sub">Simulate · Visualize · Analyse</div>
+    <div style="margin-left:auto;background:var(--black);color:var(--white);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:5px 12px" id="hero-badge"> 2026.</div>
+  </div>
+
+  <div class="grid-main">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-head">Algorithm &amp; Duration</div>
+        <div class="sidebar-body">
+          <label>Scheduling Algorithm</label>
+          <select id="algo" onchange="syncAlgoTabs()">
+            <option value="RMS">RMS — Rate Monotonic</option>
+            <option value="EDF">EDF — Earliest Deadline First</option>
+          </select>
+          <label>Simulation Duration (ticks)</label>
+          <input id="duration" type="number" value="100" min="10" max="500"/>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-head">Task Set</div>
+        <div class="sidebar-body">
+          <div class="task-list" id="task-list"></div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--mid);margin-bottom:8px">Add Task</div>
+          <div class="add-row">
+            <div><label>Name</label><input id="t-name" value="T3"/></div>
+            <div><label>Period</label><input id="t-period" type="number" value="30"/></div>
+            <div><label>Exec</label><input id="t-exec" type="number" value="6"/></div>
+          </div>
+          <button class="btn-ghost" onclick="addTask()">+ Add Task</button>
+          <div id="status"></div>
+        </div>
+      </div>
+
+      <div style="padding:16px 0 0">
+        <button class="btn-full" onclick="runSchedule()">▶ &nbsp; Run Schedule</button>
+      </div>
+    </aside>
+
+    <!-- RIGHT -->
+    <div>
+      <div class="stats-row">
+        <div class="stat-cell"><span class="stat-val" id="s-util">—</span><div class="stat-lbl">CPU Utilization</div></div>
+        <div class="stat-cell"><span class="stat-val" id="s-feasible">—</span><div class="stat-lbl">Feasible</div></div>
+        <div class="stat-cell"><span class="stat-val" id="s-misses">—</span><div class="stat-lbl">Deadline Misses</div></div>
+        <div class="stat-cell"><span class="stat-val" id="s-idle" style="color:var(--mid)">—</span><div class="stat-lbl">Idle Ticks</div></div>
+      </div>
+
+      <!-- SIMULATOR PANEL -->
+      <div class="panel active" id="panel-simulator">
+        <div class="gantt-toolbar">
+          <span>Gantt Chart</span>
+          <span class="gantt-algo-badge" id="algo-badge">—</span>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="filter-btn" id="miss-btn" onclick="toggleMissFilter()">🔴 Show Missed Only</button>
+          </div>
+        </div>
+        <div class="gantt-wrap">
+          <div id="gantt"><div class="empty-gantt">Run a schedule to render the timeline.</div></div>
+        </div>
+        <div class="info-bar" id="info-bar">
+          <span><strong>Tasks:</strong> —</span>
+          <span><strong>Duration:</strong> —</span>
+          <span><strong>Algorithm:</strong> —</span>
+          <span><strong>Feasibility Bound:</strong> —</span>
+        </div>
+      </div>
+
+      <!-- UTILIZATION PANEL -->
+      <div class="panel" id="panel-utilization">
+        <div class="util-panel">
+          <h3>Utilization Bound Analysis</h3>
+          <p>Liu &amp; Layland theorem — RMS is feasible when total utilization ≤ n·(2^(1/n)−1). EDF is optimal up to 100%.</p>
+          <div id="util-chart"><div class="empty-gantt">Run a schedule first to see utilization analysis.</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="footer-strip">RTOS SCHEDULER VISUALIZER &nbsp;·&nbsp; C++17 ENGINE + JAVA SPRING BOOT &nbsp;·&nbsp; BUILT FOR VIENNA SYSTEMS INTERNSHIPS</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const TASK_COLORS = ['#0032ff','#e8002d','#007a4c','#ff6900','#6200ea','#00897b','#c62828','#1565c0'];
+  let tasks = [{name:'T1',period:20,execution:4},{name:'T2',period:50,execution:10}];
+  let lastData = null;
+  let missFilter = false;
+
+  function colorOf(i) { return TASK_COLORS[i % TASK_COLORS.length]; }
+
+  // ── View switching ──
+  function setView(view) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + view).classList.add('active');
+    // update nav active states
+    document.querySelectorAll('.nav-tabs a').forEach(a => a.classList.remove('active'));
+    const navEl = document.getElementById('nav-' + view);
+    if (navEl) navEl.classList.add('active');
+    if (view === 'utilization' && lastData) renderUtilChart(lastData);
+  }
+
+  // ── Algo switching from nav ──
+  function switchAlgo(algo) {
+    document.getElementById('algo').value = algo;
+    syncAlgoTabs();
+    setView('simulator');
+    showToast('Algorithm set to ' + algo + ' — run schedule to update');
+  }
+
+  function syncAlgoTabs() {
+    const algo = document.getElementById('algo').value;
+    ['rms','edf'].forEach(a => {
+      document.getElementById('nav-' + a)?.classList.remove('active');
+      document.getElementById('sub-' + a)?.classList.remove('active');
+    });
+    document.getElementById('nav-' + algo.toLowerCase())?.classList.add('active');
+    document.getElementById('sub-' + algo.toLowerCase())?.classList.add('active');
+  }
+
+  // ── Deadline miss filter ──
+  function toggleMissFilter() {
+    missFilter = !missFilter;
+    const btn = document.getElementById('miss-btn');
+    btn.classList.toggle('on', missFilter);
+    btn.textContent = missFilter ? '✕ Clear Filter' : '🔴 Show Missed Only';
+    document.getElementById('sub-miss').classList.toggle('active', missFilter);
+    if (lastData) renderGantt(lastData, parseInt(document.getElementById('duration').value), document.getElementById('algo').value);
+    if (missFilter) showToast(lastData ? 'Showing deadline misses only' : 'Run a schedule first');
+  }
+
+  // ── Export JSON ──
+  function exportJSON() {
+    if (!lastData) { showToast('Run a schedule first'); return; }
+    const blob = new Blob([JSON.stringify(lastData, null, 2)], {type:'application/json'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `rtos-schedule-${lastData.algo}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Exported schedule JSON');
+  }
+
+  // ── Toast ──
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // ── Task management ──
+  function renderTaskList() {
+    const el = document.getElementById('task-list');
+    el.innerHTML = '';
+    tasks.forEach((t, i) => {
+      const util = (t.execution / t.period * 100).toFixed(0);
+      const c = colorOf(i);
+      el.innerHTML += `<div class="task-chip">
+        <div class="task-dot" style="background:${c}"></div>
+        <span class="task-chip-name">${t.name}</span>
+        <span class="task-chip-detail">P=${t.period} · E=${t.execution}</span>
+        <span class="task-chip-util" style="color:${parseInt(util)>80?'var(--red)':'var(--dark)'}">${util}%</span>
+        <button class="btn-del" onclick="removeTask(${i})">×</button>
+      </div>`;
+    });
+  }
+
+  function addTask() {
+    const name   = document.getElementById('t-name').value.trim();
+    const period = parseInt(document.getElementById('t-period').value);
+    const exec   = parseInt(document.getElementById('t-exec').value);
+    if (!name || isNaN(period) || isNaN(exec) || exec <= 0 || exec >= period) {
+      setStatus('Exec must be > 0 and < period'); return;
+    }
+    tasks.push({name, period, execution: exec});
+    document.getElementById('t-name').value = 'T' + (tasks.length + 1);
+    renderTaskList(); setStatus('');
+  }
+
+  function removeTask(i) { tasks.splice(i,1); renderTaskList(); }
+  function setStatus(msg) { document.getElementById('status').textContent = msg; }
+
+  // ── Run ──
+  async function runSchedule() {
+    if (!tasks.length) { setStatus('Add at least one task'); return; }
+    setStatus('Sending to C++ engine…');
+    const algo     = document.getElementById('algo').value;
+    const duration = parseInt(document.getElementById('duration').value);
+    try {
+      const res  = await fetch('http://localhost:8080/api/schedule', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({algo, duration, tasks})
+      });
+      lastData = await res.json();
+      renderStats(lastData, algo);
+      renderGantt(lastData, duration, algo);
+      updateInfoBar(lastData, algo, duration);
+      if (document.getElementById('panel-utilization').classList.contains('active'))
+        renderUtilChart(lastData);
+      setStatus('');
+      showToast('Schedule complete · ' + lastData.events.length + ' ticks');
+    } catch(e) {
+      setStatus('Connection failed — are both servers running?');
+    }
+  }
+
+  function renderStats(data, algo) {
+    const misses = data.events.filter(e => e.deadline_missed).length;
+    const idle   = data.events.filter(e => e.idle).length;
+    document.getElementById('s-util').textContent     = (data.utilization*100).toFixed(1)+'%';
+    document.getElementById('s-feasible').textContent = data.feasible ? 'Yes' : 'No';
+    document.getElementById('s-misses').textContent   = misses;
+    document.getElementById('s-idle').textContent     = idle;
+    document.getElementById('s-feasible').style.color = data.feasible ? 'var(--success)' : 'var(--red)';
+    document.getElementById('s-misses').style.color   = misses > 0 ? 'var(--red)' : 'var(--success)';
+    document.getElementById('algo-badge').textContent = algo;
+  }
+
+  function updateInfoBar(data, algo, duration) {
+    const n  = tasks.length;
+    const lb = algo === 'EDF'
+      ? '≤ 100% (EDF optimal)'
+      : (n * (Math.pow(2, 1/n) - 1) * 100).toFixed(1) + '% (Liu & Layland)';
+    document.getElementById('info-bar').innerHTML = `
+      <span><strong>Tasks:</strong> ${n}</span>
+      <span><strong>Duration:</strong> ${duration} ticks</span>
+      <span><strong>Algorithm:</strong> ${algo}</span>
+      <span><strong>Feasibility Bound:</strong> ${lb}</span>`;
+  }
+
+  function renderGantt(data, duration, algo) {
+    const gantt = document.getElementById('gantt');
+    gantt.innerHTML = '';
+
+    const nameList = [...new Set(data.events.filter(e => !e.idle).map(e => e.task_name))];
+    const cMap = {};
+    nameList.forEach((n, i) => {
+      const ti = tasks.findIndex(t => t.name === n);
+      cMap[n] = colorOf(ti >= 0 ? ti : i);
+    });
+
+    // if miss filter on, check if there are any misses
+    const hasMisses = data.events.some(e => e.deadline_missed);
+    if (missFilter && !hasMisses) {
+      gantt.innerHTML = '<div class="empty-gantt" style="color:var(--success)">✓ No deadline misses in this schedule.</div>';
+      return;
+    }
+
+    [...nameList, 'IDLE'].forEach(rowName => {
+      const row   = document.createElement('div');
+      row.className = 'g-row';
+      const lbl = document.createElement('div');
+      lbl.className = 'g-label';
+      lbl.textContent = rowName;
+      if (rowName !== 'IDLE') lbl.style.color = cMap[rowName];
+      row.appendChild(lbl);
+
+      const cells = document.createElement('div');
+      cells.className = 'g-cells';
+
+      for (let tick = 0; tick < duration; tick++) {
+        const ev   = data.events[tick];
+        const cell = document.createElement('div');
+        cell.className = 'g-cell';
+        cell.title = `tick ${tick}${ev ? ' · ' + ev.task_name : ''}`;
+
+        const isThis = rowName === 'IDLE'
+          ? ev?.idle
+          : ev?.task_name === rowName && !ev?.idle;
+
+        if (isThis) {
+          if (ev.deadline_missed) {
+            cell.classList.add('g-missed');
+          } else if (missFilter) {
+            // dim non-missed when filter is on
+            cell.style.background = rowName === 'IDLE' ? 'var(--off)' : cMap[rowName];
+            cell.style.opacity = '0.15';
+          } else {
+            cell.style.background = rowName === 'IDLE' ? 'var(--off)' : cMap[rowName];
+          }
+        } else {
+          cell.style.background = 'transparent';
+        }
+        cells.appendChild(cell);
+      }
+      row.appendChild(cells);
+      gantt.appendChild(row);
+    });
+
+    // ruler
+    const ruler = document.createElement('div');
+    ruler.className = 'ruler-row';
+    const rl = document.createElement('div'); rl.className = 'ruler-lbl';
+    ruler.appendChild(rl);
+    const rc = document.createElement('div'); rc.className = 'ruler-cells';
+    for (let t = 0; t < duration; t++) {
+      const c = document.createElement('div'); c.className = 'ruler-cell';
+      c.textContent = t % 20 === 0 ? t : '';
+      rc.appendChild(c);
+    }
+    ruler.appendChild(rc);
+    gantt.appendChild(ruler);
+  }
+
+  // ── Utilization Chart ──
+  function renderUtilChart(data) {
+    const container = document.getElementById('util-chart');
+    container.innerHTML = '';
+    const algo = document.getElementById('algo').value;
+    const n    = tasks.length;
+    const llBound = algo === 'EDF' ? 1.0 : n * (Math.pow(2, 1/n) - 1);
+    const llPct   = (llBound * 100).toFixed(1);
+
+    tasks.forEach((t, i) => {
+      const util    = t.execution / t.period;
+      const utilPct = (util * 100).toFixed(1);
+      const barPct  = Math.min(util / llBound * 100, 100);
+      const over    = util > llBound;
+
+      const row = document.createElement('div');
+      row.className = 'util-bar-row';
+      row.innerHTML = `
+        <div class="util-bar-label" style="color:${colorOf(i)}">${t.name}</div>
+        <div class="util-bar-track">
+          <div class="util-bar-fill" style="width:${Math.min(utilPct,100)}%;background:${over?'var(--red)':colorOf(i)}"></div>
+          <div class="util-bound-line" style="left:${llPct}%">
+            <div class="util-bound-label">${llPct}%</div>
+          </div>
+        </div>
+        <div class="util-bar-val">${utilPct}%</div>`;
+      container.appendChild(row);
+    });
+
+    // Total row
+    const totalUtil = tasks.reduce((s,t) => s + t.execution/t.period, 0);
+    const totalPct  = (totalUtil * 100).toFixed(1);
+    const totalOver = totalUtil > llBound;
+
+    const sep = document.createElement('div');
+    sep.style.cssText = 'border-top:1px solid var(--light);margin:12px 0';
+    container.appendChild(sep);
+
+    const totalRow = document.createElement('div');
+    totalRow.className = 'util-bar-row';
+    totalRow.innerHTML = `
+      <div class="util-bar-label" style="font-weight:700;color:var(--dark)">Σ</div>
+      <div class="util-bar-track">
+        <div class="util-bar-fill" style="width:${Math.min(parseFloat(totalPct),100)}%;background:${totalOver?'var(--red)':'var(--dark)'}"></div>
+        <div class="util-bound-line" style="left:${llPct}%">
+          <div class="util-bound-label">${llPct}% bound</div>
+        </div>
+      </div>
+      <div class="util-bar-val" style="font-weight:700;color:${totalOver?'var(--red)':'var(--success)'}">${totalPct}%</div>`;
+    container.appendChild(totalRow);
+
+    const verdict = document.createElement('div');
+    verdict.style.cssText = 'margin-top:16px;padding:12px;border:1px solid var(--light);font-size:12px;background:var(--off)';
+    verdict.innerHTML = totalOver
+      ? `<strong style="color:var(--red)">Not feasible</strong> — Total utilization ${totalPct}% exceeds the ${algo} bound of ${llPct}%. Deadline misses will occur.`
+      : `<strong style="color:var(--success)">Feasible</strong> — Total utilization ${totalPct}% is within the ${algo} bound of ${llPct}%. No deadline misses guaranteed.`;
+    container.appendChild(verdict);
+  }
+
+  renderTaskList();
+  syncAlgoTabs();
+</script>
+</body>
+</html>
